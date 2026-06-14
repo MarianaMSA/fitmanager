@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: #FAFAF8;
+  color: #1A1917;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+input, select, textarea, button { font-family: inherit; }
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #1D9E75 !important;
+  box-shadow: 0 0 0 3px rgba(29,158,117,0.12);
+}
+
+button:disabled { opacity: 0.55; cursor: not-allowed !important; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E8E6E0; border-radius: 2px; }
+
+.app-shell { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; }
+
+@media (min-width: 768px) {
+  .app-shell { box-shadow: 0 0 0 1px #E8E6E0; }
+  body { background: #F0EEE8; }
+}
