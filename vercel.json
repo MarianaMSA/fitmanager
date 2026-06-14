@@ -1,3 +1,4 @@
 {
+  "name": "fitmanager-app",
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }
