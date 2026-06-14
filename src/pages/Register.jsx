@@ -162,7 +162,7 @@ export default function Register() {
 
             <div style={{ background: '#F0EEE8', borderRadius: 10, padding: '12px 14px', marginBottom: 20 }}>
               <p style={{ fontSize: 11, color: C.ts, lineHeight: 1.6 }}>
-                Ao criar sua conta você concorda com os <span style={{ color: C.green, fontWeight: 500 }}>Termos de Uso</span> e a <span style={{ color: C.green, fontWeight: 500 }}>Política de Privacidade</span> do FitManager.
+                Ao criar sua conta você concorda com os <span style={{ color: C.green, fontWeight: 500 }}>Termos de Uso</span> e a <span style={{ color: C.green, fontWeight: 500 }}>Política de Privacidade</span> do VirtusManager.
               </p>
             </div>
           </div>

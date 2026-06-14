@@ -1,4 +1,4 @@
 {
-  "name": "fitmanager-app",
+  "name": "VirtusManager-app",
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }

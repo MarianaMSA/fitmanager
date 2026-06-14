@@ -82,7 +82,7 @@ export default function AcceptInvite() {
     <div style={{ minHeight: '100vh', background: `linear-gradient(160deg, ${C.gd} 0%, ${C.green} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center', color: '#fff' }}>
         <p style={{ fontSize: 60, marginBottom: 20 }}>🎉</p>
-        <p style={{ fontSize: 24, fontWeight: 800, marginBottom: 10 }}>Bem-vindo ao FitManager!</p>
+        <p style={{ fontSize: 24, fontWeight: 800, marginBottom: 10 }}>Bem-vindo ao VirtusManager!</p>
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,.8)', marginBottom: 30, lineHeight: 1.6 }}>
           Sua conta foi criada. Agora você tem acesso à sua área de cliente, fichas de treino e muito mais.
         </p>
@@ -99,7 +99,7 @@ export default function AcceptInvite() {
         <div style={{ width: 70, height: 70, borderRadius: 22, background: 'rgba(255,255,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 16px' }}>💪</div>
         <p style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Você foi convidado!</p>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,.8)', lineHeight: 1.6 }}>
-          <strong>{invite.personal?.nome}</strong> te convidou para usar o FitManager como cliente.
+          <strong>{invite.personal?.nome}</strong> te convidou para usar o VirtusManager como cliente.
         </p>
       </div>
 

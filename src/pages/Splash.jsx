@@ -19,7 +19,7 @@ export default function Splash() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 44, margin: '0 auto 22px',
         }}>💪</div>
-        <p style={{ fontSize: 34, fontWeight: 800, color: '#fff', letterSpacing: -1, marginBottom: 8 }}>FitManager</p>
+        <p style={{ fontSize: 34, fontWeight: 800, color: '#fff', letterSpacing: -1, marginBottom: 8 }}>VirtusManager</p>
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,.75)', lineHeight: 1.6, maxWidth: 280 }}>
           Plataforma completa para Personal Trainers e seus clientes
         </p>

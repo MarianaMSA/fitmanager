@@ -63,8 +63,8 @@ export default function AppShell() {
       <div style={{ background: C.green, padding: '14px 18px 12px', position: 'sticky', top: 0, zIndex: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>FitManager</p>
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,.7)', marginTop: 1 }}>{TAB_LBL[activeTab] || 'FitManager'}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>VirtusManager</p>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,.7)', marginTop: 1 }}>{TAB_LBL[activeTab] || 'VirtusManager'}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ textAlign: 'right', marginRight: 4 }}>

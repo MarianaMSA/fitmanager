@@ -81,7 +81,7 @@ export default function Login() {
       <div style={{ background: C.green, padding: '20px 20px 44px' }}>
         <button onClick={() => nav('/')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.85)', fontSize: 22, cursor: 'pointer', padding: 0, marginBottom: 16, display: 'block' }}>←</button>
         <p style={{ fontSize: 26, fontWeight: 700, color: '#fff', marginBottom: 6 }}>Bem-vindo de volta 👋</p>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,.75)' }}>Entre com sua conta FitManager</p>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,.75)' }}>Entre com sua conta VirtusManager</p>
       </div>
 
       <div style={{ padding: '28px 20px', marginTop: -20, background: C.bg, borderRadius: '20px 20px 0 0' }}>

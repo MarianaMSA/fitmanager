@@ -1,5 +1,5 @@
 -- ============================================================
--- FitManager — Schema Supabase (execute no SQL Editor)
+-- VirtusManager — Schema Supabase (execute no SQL Editor)
 -- ============================================================
 
 -- PROFILES (personal trainers e clientes)
