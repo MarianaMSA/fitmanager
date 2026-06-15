@@ -163,13 +163,75 @@ function FichasCliente({ client, showToast }) {
 // ─── Periodização ────────────────────────────────────────────────────────────
 const FASES = ['Adaptação','Hipertrofia','Força','Potência','Manutenção','Definição']
 
+const FASE_META = {
+  Adaptação:  { emoji: '🏋️', bg: '#E6F1FB', tc: '#185FA5', bar: '#185FA5' },
+  Hipertrofia:{ emoji: '💪', bg: '#E1F5EE', tc: '#0F6E56', bar: '#1D9E75' },
+  Força:      { emoji: '🏋️', bg: '#FAEEDA', tc: '#854F0B', bar: '#E8940A' },
+  Potência:   { emoji: '⚡', bg: '#FAECE7', tc: '#993C1D', bar: '#E05C2A' },
+  Manutenção: { emoji: '🔄', bg: '#F5F4F0', tc: '#6B6860', bar: '#A09D98' },
+  Definição:  { emoji: '✂️', bg: '#EEEDFE', tc: '#3C3489', bar: '#6B63D4' },
+}
+
+// Calcula data de início/fim de cada meso a partir da data_inicio do macro
+function calcMesoDates(dataInicio, mesos) {
+  const base = dataInicio ? new Date(dataInicio + 'T00:00:00') : new Date()
+  const results = []
+  let cursor = new Date(base)
+  for (const m of mesos) {
+    const inicio = new Date(cursor)
+    const fim = new Date(cursor)
+    fim.setDate(fim.getDate() + (parseInt(m.semanas) || 4) * 7 - 1)
+    results.push({ inicio, fim })
+    cursor.setDate(cursor.getDate() + (parseInt(m.semanas) || 4) * 7)
+  }
+  return results
+}
+
+function fmtMes(d) {
+  const MESES_CURTOS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  return `${d.getDate().toString().padStart(2,'0')}/${MESES_CURTOS[d.getMonth()]}/${d.getFullYear()}`
+}
+
+function fmtMesAno(d) {
+  const MESES_CURTOS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  return `${MESES_CURTOS[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`
+}
+
+// Calcula intensidade média por mês (simplificado: % baseado na fase)
+const FASE_INTENSIDADE = { Adaptação: 65, Hipertrofia: 75, Força: 85, Potência: 90, Manutenção: 60, Definição: 70 }
+
+function calcIntensidadePorMes(dataInicio, mesos) {
+  const base = dataInicio ? new Date(dataInicio + 'T00:00:00') : new Date()
+  const mapa = {}
+  let cursor = new Date(base)
+  for (const m of mesos) {
+    const totalDias = (parseInt(m.semanas) || 4) * 7
+    let dias = 0
+    while (dias < totalDias) {
+      const chave = `${cursor.getFullYear()}-${cursor.getMonth()}`
+      if (!mapa[chave]) mapa[chave] = { date: new Date(cursor.getFullYear(), cursor.getMonth(), 1), intensidades: [] }
+      mapa[chave].intensidades.push(FASE_INTENSIDADE[m.fase] || 70)
+      cursor.setDate(cursor.getDate() + 1)
+      dias++
+    }
+  }
+  return Object.values(mapa).map(v => ({
+    label: fmtMesAno(v.date),
+    valor: Math.round(v.intensidades.reduce((a, b) => a + b, 0) / v.intensidades.length),
+  }))
+}
+
 function Periodizacao({ client, showToast }) {
   const { user } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ objetivo: '', duracao_semanas: 12, mesos: [] })
+  const [form, setForm] = useState({
+    objetivo: '', duracao_semanas: 12,
+    data_inicio: new Date().toISOString().split('T')[0],
+    mesos: []
+  })
 
   useEffect(() => { fetchPeriod() }, [client])
 
@@ -177,12 +239,17 @@ function Periodizacao({ client, showToast }) {
     setLoading(true)
     const { data: d } = await supabase.from('periodizacao').select('*').eq('cliente_id', client.id).eq('personal_id', user.id).maybeSingle()
     setData(d || null)
-    if (d) setForm({ objetivo: d.macro?.objetivo || '', duracao_semanas: d.macro?.duracao_semanas || 12, mesos: d.mesos || [] })
+    if (d) setForm({
+      objetivo: d.macro?.objetivo || '',
+      duracao_semanas: d.macro?.duracao_semanas || 12,
+      data_inicio: d.macro?.data_inicio || new Date().toISOString().split('T')[0],
+      mesos: d.mesos || []
+    })
     setLoading(false)
   }
 
   function addMeso() {
-    setForm(f => ({ ...f, mesos: [...f.mesos, { fase: 'Hipertrofia', semanas: 4, obs: '' }] }))
+    setForm(f => ({ ...f, mesos: [...f.mesos, { fase: 'Hipertrofia', semanas: 4, obs: '', intensidade: 75 }] }))
   }
   function updateMeso(i, k, v) {
     setForm(f => ({ ...f, mesos: f.mesos.map((m, idx) => idx === i ? { ...m, [k]: v } : m) }))
@@ -194,10 +261,15 @@ function Periodizacao({ client, showToast }) {
   async function salvar() {
     setSaving(true)
     try {
+      const totalSemanas = form.mesos.reduce((acc, m) => acc + (parseInt(m.semanas) || 0), 0)
       const payload = {
         cliente_id: client.id,
         personal_id: user.id,
-        macro: { objetivo: form.objetivo, duracao_semanas: form.duracao_semanas },
+        macro: {
+          objetivo: form.objetivo,
+          duracao_semanas: totalSemanas || form.duracao_semanas,
+          data_inicio: form.data_inicio,
+        },
         mesos: form.mesos,
         updated_at: new Date().toISOString(),
       }
@@ -215,43 +287,70 @@ function Periodizacao({ client, showToast }) {
 
   if (loading) return <Spinner />
 
+  // ── Formulário de edição ──
   if (editing) return (
     <div>
-      <p style={{ fontSize: 15, fontWeight: 700, color: C.tp, marginBottom: 16 }}>Periodização de {client.nome?.split(' ')[0]}</p>
+      <p style={{ fontSize: 15, fontWeight: 700, color: C.tp, marginBottom: 16 }}>
+        Periodização de {client.nome?.split(' ')[0]}
+      </p>
 
       <div style={{ marginBottom: 14 }}>
         <label style={{ fontSize: 11, color: C.ts, display: 'block', marginBottom: 6 }}>Objetivo geral</label>
-        <input value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ex: Hipertrofia + definição" style={IS} />
+        <input value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))} placeholder="Ex: Hipertrofia com transição para força" style={IS} />
       </div>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 11, color: C.ts, display: 'block', marginBottom: 6 }}>Duração total (semanas)</label>
-        <input value={form.duracao_semanas} onChange={e => setForm(f => ({ ...f, duracao_semanas: e.target.value }))} type="number" min="1" max="52" style={IS} />
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 11, color: C.ts, display: 'block', marginBottom: 6 }}>Data de início</label>
+          <input value={form.data_inicio} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} type="date" style={IS} />
+        </div>
       </div>
 
       <p style={{ fontSize: 13, fontWeight: 700, color: C.tp, marginBottom: 10 }}>Mesociclos</p>
-      {form.mesos.map((m, i) => (
-        <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 10, background: '#fff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.ts }}>Meso {i + 1}</p>
-            <button onClick={() => removeMeso(i)} style={{ background: 'none', border: 'none', color: C.red, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Remover</button>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <div style={{ flex: 2 }}>
-              <label style={{ fontSize: 10, color: C.ts, display: 'block', marginBottom: 4 }}>Fase</label>
-              <select value={m.fase} onChange={e => updateMeso(i, 'fase', e.target.value)} style={{ ...IS, appearance: 'none', fontSize: 13 }}>
-                {FASES.map(f => <option key={f}>{f}</option>)}
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 10, color: C.ts, display: 'block', marginBottom: 4 }}>Semanas</label>
-              <input value={m.semanas} onChange={e => updateMeso(i, 'semanas', e.target.value)} type="number" min="1" max="16" style={{ ...IS, fontSize: 13 }} />
-            </div>
-          </div>
-          <input value={m.obs} onChange={e => updateMeso(i, 'obs', e.target.value)} placeholder="Observações do meso" style={IS} />
-        </div>
-      ))}
 
-      <button onClick={addMeso} style={{ width: '100%', padding: '10px 0', borderRadius: 10, border: `1.5px dashed ${C.border}`, background: '#fff', color: C.ts, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20 }}>
+      {form.mesos.map((m, i) => {
+        const meta = FASE_META[m.fase] || FASE_META.Hipertrofia
+        return (
+          <div key={i} style={{ border: `1.5px solid ${meta.bg}`, borderRadius: 14, padding: 14, marginBottom: 10, background: '#fff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>{meta.emoji}</div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: C.ts }}>Bloco {i + 1}</p>
+              </div>
+              <button onClick={() => removeMeso(i)} style={{ background: 'none', border: 'none', color: C.red, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Remover</button>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <div style={{ flex: 2 }}>
+                <label style={{ fontSize: 10, color: C.ts, display: 'block', marginBottom: 4 }}>Fase</label>
+                <select value={m.fase} onChange={e => updateMeso(i, 'fase', e.target.value)} style={{ ...IS, appearance: 'none', fontSize: 13 }}>
+                  {FASES.map(f => <option key={f}>{f}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: C.ts, display: 'block', marginBottom: 4 }}>Semanas</label>
+                <input value={m.semanas} onChange={e => updateMeso(i, 'semanas', e.target.value)} type="number" min="1" max="16" style={{ ...IS, fontSize: 13 }} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 10, color: C.ts, display: 'block', marginBottom: 4 }}>Intensidade média (%)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="range" min="50" max="100" step="5"
+                  value={m.intensidade || FASE_INTENSIDADE[m.fase] || 75}
+                  onChange={e => updateMeso(i, 'intensidade', parseInt(e.target.value))}
+                  style={{ flex: 1, accentColor: meta.bar }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 700, color: meta.tc, minWidth: 36 }}>
+                  {m.intensidade || FASE_INTENSIDADE[m.fase] || 75}%
+                </span>
+              </div>
+            </div>
+            <input value={m.obs} onChange={e => updateMeso(i, 'obs', e.target.value)} placeholder="Observações (ex: foco em resistência)" style={{ ...IS, fontSize: 13 }} />
+          </div>
+        )
+      })}
+
+      <button onClick={addMeso} style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: `1.5px dashed ${C.border}`, background: '#fff', color: C.ts, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20 }}>
         + Adicionar mesociclo
       </button>
 
@@ -262,6 +361,7 @@ function Periodizacao({ client, showToast }) {
     </div>
   )
 
+  // ── Estado vazio ──
   if (!data) return (
     <div style={{ textAlign: 'center', padding: '40px 20px', border: `1.5px dashed ${C.border}`, borderRadius: 14 }}>
       <p style={{ fontSize: 28, marginBottom: 8 }}>📆</p>
@@ -271,36 +371,172 @@ function Periodizacao({ client, showToast }) {
     </div>
   )
 
+  // ── Visualização rica ──
+  const mesos = data.mesos || []
+  const dataInicio = data.macro?.data_inicio
+  const mesoDates = calcMesoDates(dataInicio, mesos)
+  const dataFim = mesoDates.length > 0 ? mesoDates[mesoDates.length - 1].fim : null
+  const totalSemanas = mesos.reduce((acc, m) => acc + (parseInt(m.semanas) || 0), 0)
+  const intensidadePorMes = calcIntensidadePorMes(dataInicio, mesos)
+  const maxIntens = Math.max(...intensidadePorMes.map(x => x.valor), 1)
+
+  // Linha do tempo proporcional
+  const timelineSegs = mesos.map((m, i) => ({
+    pct: ((parseInt(m.semanas) || 4) / totalSemanas) * 100,
+    meta: FASE_META[m.fase] || FASE_META.Hipertrofia,
+    fase: m.fase,
+    idx: i,
+  }))
+
+  // Hoje na timeline
+  const hoje = new Date()
+  let hojePct = null
+  if (dataInicio && dataFim) {
+    const base = new Date(dataInicio + 'T00:00:00')
+    const totalDias = (dataFim - base) / (1000 * 60 * 60 * 24)
+    const diasPassados = (hoje - base) / (1000 * 60 * 60 * 24)
+    if (diasPassados >= 0 && diasPassados <= totalDias) {
+      hojePct = (diasPassados / totalDias) * 100
+    }
+  }
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div>
-          <p style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>{data.macro?.objetivo || 'Sem objetivo definido'}</p>
-          <p style={{ fontSize: 12, color: C.ts }}>{data.macro?.duracao_semanas || '—'} semanas no total</p>
+
+      {/* Card Macrociclo */}
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 16, background: '#fff', padding: 16, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 20 }}>📅</span>
+            <p style={{ fontSize: 15, fontWeight: 700, color: C.tp }}>Macrociclo {dataInicio ? new Date(dataInicio + 'T00:00:00').getFullYear() : ''}</p>
+          </div>
+          <button onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 12, color: C.ts, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ✏️ Editar
+          </button>
         </div>
-        <button onClick={() => setEditing(true)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 12px', fontSize: 12, color: C.ts, cursor: 'pointer', fontFamily: 'inherit' }}>Editar</button>
+
+        {dataInicio && dataFim && (
+          <p style={{ fontSize: 12, color: C.ts, marginBottom: 2 }}>
+            {fmtMes(new Date(dataInicio + 'T00:00:00'))} → {fmtMes(dataFim)} · {totalSemanas} semanas
+          </p>
+        )}
+        {data.macro?.objetivo && (
+          <p style={{ fontSize: 12, color: C.gd, fontWeight: 500, marginBottom: 12 }}>
+            🎯 {data.macro.objetivo}
+          </p>
+        )}
+
+        {/* Linha do tempo visual */}
+        {totalSemanas > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Linha do tempo</p>
+            <div style={{ position: 'relative', height: 20, borderRadius: 10, overflow: 'visible', display: 'flex', marginBottom: 20 }}>
+              {timelineSegs.map((seg, i) => (
+                <div key={i} style={{
+                  width: `${seg.pct}%`,
+                  background: seg.meta.bar,
+                  opacity: 0.85,
+                  borderRadius: i === 0 ? '10px 0 0 10px' : i === timelineSegs.length - 1 ? '0 10px 10px 0' : 0,
+                  position: 'relative',
+                }} />
+              ))}
+              {/* Marcador de hoje */}
+              {hojePct !== null && (
+                <div style={{ position: 'absolute', left: `${hojePct}%`, top: -4, bottom: -4, width: 2, background: C.tp, borderRadius: 2, zIndex: 2 }}>
+                  <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', background: C.tp, color: '#fff', fontSize: 9, padding: '2px 5px', borderRadius: 4, whiteSpace: 'nowrap' }}>hoje</div>
+                </div>
+              )}
+            </div>
+
+            {/* Labels dos marcos */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              {mesoDates.filter((_, i) => i === 0 || i === Math.floor(mesos.length / 2) || i === mesos.length - 1).map((d, i, arr) => (
+                <p key={i} style={{ fontSize: 10, color: C.tt, textAlign: i === arr.length - 1 ? 'right' : i === 0 ? 'left' : 'center' }}>
+                  {fmtMes(i === 0 ? d.inicio : i === arr.length - 1 ? d.fim : d.inicio)}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {(data.mesos || []).length === 0 ? (
+      {/* Gráfico de intensidade */}
+      {intensidadePorMes.length > 0 && (
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 16, background: '#fff', padding: 16, marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: C.ts, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Intensidade ao longo do tempo</p>
+          <p style={{ fontSize: 11, color: C.tt, marginBottom: 14 }}>Média (%) por mês</p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80, overflowX: 'auto', paddingBottom: 4 }}>
+            {intensidadePorMes.map((mes, i) => {
+              const pctH = (mes.valor / 100) * 70
+              const isAtivo = hojePct !== null && (() => {
+                const totalMeses = intensidadePorMes.length
+                const idxAtivo = Math.floor((hojePct / 100) * totalMeses)
+                return i === idxAtivo
+              })()
+              return (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 38, flex: 1 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: isAtivo ? C.tp : C.ts }}>{mes.valor}%</p>
+                  <div style={{
+                    width: '100%', height: pctH + 10,
+                    background: isAtivo ? C.green : C.gl,
+                    borderRadius: '5px 5px 0 0',
+                    border: isAtivo ? `1.5px solid ${C.gd}` : 'none',
+                    transition: 'height 0.3s',
+                  }} />
+                  <p style={{ fontSize: 10, color: C.tt, whiteSpace: 'nowrap' }}>{mes.label}</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Legenda */}
+          <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+            {[...new Set(mesos.map(m => m.fase))].map(fase => {
+              const meta = FASE_META[fase] || FASE_META.Hipertrofia
+              return (
+                <div key={fase} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, background: meta.bar }} />
+                  <span style={{ fontSize: 10, color: C.ts }}>{meta.emoji} {fase}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mesociclos */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: C.ts, textTransform: 'uppercase', letterSpacing: 0.5 }}>Mesociclos ({mesos.length})</p>
+        <button onClick={() => setEditing(true)} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', fontSize: 11, color: C.ts, cursor: 'pointer', fontFamily: 'inherit' }}>+ Novo</button>
+      </div>
+
+      {mesos.length === 0 ? (
         <p style={{ fontSize: 13, color: C.ts }}>Nenhum mesociclo ainda.</p>
-      ) : (data.mesos || []).map((m, i) => {
-        const cores = { Adaptação: C.bl, Hipertrofia: C.gl, Força: '#FAEEDA', Potência: '#FAECE7', Manutenção: '#F5F4F0', Definição: '#EEEDFE' }
-        const texto = { Adaptação: C.blue, Hipertrofia: C.gd, Força: C.amber, Potência: '#993C1D', Manutenção: C.ts, Definição: '#3C3489' }
-        const bg = cores[m.fase] || C.gl
-        const tc = texto[m.fase] || C.tp
+      ) : mesos.map((m, i) => {
+        const meta = FASE_META[m.fase] || FASE_META.Hipertrofia
+        const datas = mesoDates[i]
         return (
-          <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: tc, marginTop: 4, flexShrink: 0 }} />
-              {i < (data.mesos||[]).length - 1 && <div style={{ width: 2, flex: 1, background: C.border, marginTop: 4 }} />}
-            </div>
-            <div style={{ flex: 1, background: bg, borderRadius: 12, padding: '12px 14px', marginBottom: i < (data.mesos||[]).length-1 ? 0 : 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: tc }}>Meso {i+1} — {m.fase}</p>
-                <span style={{ fontSize: 12, color: tc, fontWeight: 600 }}>{m.semanas} sem.</span>
+          <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 14, marginBottom: 8, background: '#fff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                {meta.emoji}
               </div>
-              {m.obs && <p style={{ fontSize: 12, color: C.ts, marginTop: 4 }}>{m.obs}</p>}
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: C.tp }}>Bloco {i + 1} — {m.fase}</p>
+                  <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: meta.bg, color: meta.tc, fontWeight: 600 }}>{m.fase}</span>
+                </div>
+                {datas && (
+                  <p style={{ fontSize: 11, color: C.ts }}>
+                    {fmtMes(datas.inicio)} → {fmtMes(datas.fim)} · {m.semanas} sem.
+                  </p>
+                )}
+              </div>
+              <span style={{ color: C.tt, fontSize: 18 }}>›</span>
             </div>
+            {m.obs && (
+              <p style={{ fontSize: 12, color: C.ts, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>{m.obs}</p>
+            )}
           </div>
         )
       })}
