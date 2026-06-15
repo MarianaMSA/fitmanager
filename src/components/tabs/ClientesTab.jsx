@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
+import emailjs from '@emailjs/browser'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { C, IS } from '../../lib/tokens'
 import { Card, BackBtn, Badge, Avatar, SLabel, Btn, Spinner } from '../UI'
 import PerfilCliente from '../PerfilCliente'
+
+const EMAILJS_SERVICE  = 'service_2zkkybo'
+const EMAILJS_TEMPLATE = 'template_1cukb4d'
+const EMAILJS_KEY      = 'o7o07GISVGgh7aARS'
 
 export default function ClientesTab({ showToast }) {
   const { user, profile } = useAuth()
@@ -49,20 +54,24 @@ export default function ClientesTab({ showToast }) {
 
       const inviteUrl = window.location.origin + '/convite?token=' + token
 
-      await supabase.functions.invoke('send-invite', {
-        body: {
-          email: inviteEmail,
-          nome: inviteNome,
-          personalNome: profile?.nome || 'Seu personal trainer',
-          inviteUrl,
-        }
-      })
+      await emailjs.send(
+        EMAILJS_SERVICE,
+        EMAILJS_TEMPLATE,
+        {
+          personal_nome: profile?.nome || 'Seu personal trainer',
+          cliente_nome: inviteNome || inviteEmail,
+          invite_url: inviteUrl,
+          to_email: inviteEmail,
+        },
+        EMAILJS_KEY
+      )
 
       showToast('Convite enviado para ' + inviteEmail + '!')
       setInviteEmail('')
       setInviteNome('')
       setShowInvite(false)
     } catch (e) {
+      console.error(e)
       showToast('Erro ao enviar convite. Tente novamente.')
     } finally {
       setSending(false)
@@ -136,4 +145,4 @@ export default function ClientesTab({ showToast }) {
       ))}
     </div>
   )
-        }
+    }
