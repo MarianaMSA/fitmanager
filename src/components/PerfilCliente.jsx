@@ -65,7 +65,7 @@ useEffect(() => { fetchFichas() }, [client])
 async function fetchFichas() {
 setLoading(true)
 const [{ data: atrib }, { data: pool }] = await Promise.all([
-supabase.from('fichas').select('*').eq('personal_id', user.id).eq('cliente_id', client.id).eq('ativa', true).order('created_at', { ascending: false }),
+supabase.from('fichas').select('*').eq('personal_id', user.id).eq('cliente_id', client.id).order('created_at', { ascending: false }),
 supabase.from('fichas').select('id,nome').eq('personal_id', user.id).is('cliente_id', null).order('nome'),
 ])
 setFichas(atrib || [])
@@ -83,12 +83,12 @@ if (error) throw error
 showToast('Ficha atribuída!')
 setShowAtribuir(false); setFichaId('')
 fetchFichas()
-} catch { showToast('Erro ao atribuir ficha') }
+} catch { showToast('Erro ao atribuir ficha', 'error') }
 finally { setSaving(false) }
 }
 
 async function remover(id) {
-await supabase.from('fichas').update({ ativa: false }).eq('id', id)
+await supabase.from('fichas').delete().eq('id', id)
 showToast('Ficha removida')
 fetchFichas()
 }
@@ -122,7 +122,7 @@ Remover ficha deste cliente
 return (
 <div>
 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-<p style={{ fontSize: 13, color: C.ts }}>{fichas.length} ficha{fichas.length !== 1 ? 's' : ''} ativas</p>
+<p style={{ fontSize: 13, color: C.ts }}>{fichas.length} ficha{fichas.length !== 1 ? 's' : ''}</p>
 {todas.length > 0 && <Btn onClick={() => setShowAtribuir(true)} style={{ padding: '7px 12px', fontSize: 12 }}>+ Atribuir ficha</Btn>}
 </div>
 
@@ -241,7 +241,7 @@ if (data?.id) {
 showToast('Periodização salva!')
 setEditing(false)
 fetchPeriod()
-} catch { showToast('Erro ao salvar') }
+} catch { showToast('Erro ao salvar', 'error') }
 finally { setSaving(false) }
 }
 
@@ -583,7 +583,7 @@ if (error) throw error
 showToast('Medidas salvas!')
 setShowNova(false); setDados({}); setPeso(''); setAltura(''); setObs('')
 fetchMedidas()
-} catch { showToast('Erro ao salvar medidas') }
+} catch { showToast('Erro ao salvar medidas', 'error') }
 finally { setSaving(false) }
 }
 
