@@ -37,10 +37,10 @@ export default function AppShell() {
   const role = profile?.role || 'personal'
   const [pTab, setPTab] = useState('agenda')
   const [cTab, setCTab] = useState('meus')
-  const [toast, setToast] = useState({ visible: false, msg: '' })
+  const [toast, setToast] = useState({ visible: false, msg: '', type: 'success' })
 
-  const showToast = msg => {
-    setToast({ visible: true, msg })
+  const showToast = (msg, type = 'success') => {
+    setToast({ visible: true, msg, type })
     setTimeout(() => setToast(t => ({ ...t, visible: false })), 3000)
   }
 
@@ -106,7 +106,7 @@ export default function AppShell() {
         ))}
       </div>
 
-      <Toast msg={toast.msg} visible={toast.visible} />
+      <Toast msg={toast.msg} visible={toast.visible} type={toast.type} />
     </div>
   )
 }
