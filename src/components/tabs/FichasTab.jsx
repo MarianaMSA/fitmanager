@@ -58,7 +58,6 @@ export default function FichasTab({ showToast }) {
           cliente_id: null,
           nome,
           exercicios: exsFiltrados,
-          ativa: true,
         })
         if (error) throw error
       } else {
@@ -68,7 +67,6 @@ export default function FichasTab({ showToast }) {
           cliente_id: cid,
           nome,
           exercicios: exsFiltrados,
-          ativa: true,
         }))
         const { error } = await supabase.from('fichas').insert(inserts)
         if (error) throw error
@@ -85,7 +83,7 @@ export default function FichasTab({ showToast }) {
       setExercicios([{ nome: '', series: 3, reps: 10, carga: '', obs: '' }])
       fetchAll()
     } catch (e) {
-      showToast('Erro ao salvar ficha')
+      showToast('Erro ao salvar ficha', 'error')
     } finally {
       setSaving(false)
     }
